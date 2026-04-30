@@ -154,6 +154,7 @@ commits: device_monitor.rs atomic swap, tiered backoff, empty device list guard
 - [ ] **health endpoint during output recovery** — `curl localhost:3030/health` shows `device_status_details` with output device present within 15 seconds of recovery.
 - [ ] **SCK transient failure doesn't cascade** — if ScreenCaptureKit returns empty device list, running devices are NOT disconnected. Verify: `grep "device list returned empty" ~/.screenpipe/screenpipe-app.*.log` shows warning but no disconnections.
 - [ ] **DB gap query after device switch** — run: `sqlite3 ~/.screenpipe/db.sqlite "SELECT t1.timestamp as gap_start, t2.timestamp as gap_end, (julianday(t2.timestamp) - julianday(t1.timestamp)) * 86400 as gap_seconds FROM audio_transcriptions t1 JOIN audio_transcriptions t2 ON t2.id = (SELECT MIN(id) FROM audio_transcriptions WHERE id > t1.id AND is_input_device = 0) WHERE t1.is_input_device = 0 AND (julianday(t2.timestamp) - julianday(t1.timestamp)) * 86400 > 60 ORDER BY t1.timestamp;"` — should return no rows if output was continuously captured.
+- [ ] **silent device doesn't trigger watchdog loop** — Connect a USB device (hub, unplugged mic) that only emits silence. Let it run for 2+ minutes. Verify: `grep "watchdog" ~/.screenpipe/screenpipe-app.*.log` shows **no** device recovery spam (watchdog only fires after first non-zero buffer). Device stays mounted without rebuilds. (`357e4dfc`)
 
 #### meeting detection & speaker identification
 
