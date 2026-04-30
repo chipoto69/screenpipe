@@ -141,6 +141,7 @@ commits: `28e5c247`
 - [ ] **per-device audio toggle** — In the tray menu, verify you can toggle recording for individual audio devices. (`3ee3defcb`)
 - [ ] **stable audio device order** — Verify that audio devices listed in the tray menu maintain a stable order across refreshes. (`4577ac8a6`)
 - [ ] **Mic disconnect false-positives on sleep/wake** — Put the computer to sleep and wake it up. Verify that no false-positive mic disconnect notifications or logs are generated. (`796baa619`)
+- [ ] **zero-fill watchdog doesn't fire on never-healthy devices** — Plug in a USB device (broken mic, USB hub, disconnected input) that produces only silence or zero samples. Let it record for 2+ minutes without ever producing real audio. Verify: (1) no `DEVICE_RECOVERY` log entries for this device, (2) health endpoint shows normal audio status (not "recovery" state), (3) vision DB writer keeps writing normally (health endpoint shows no "writes stalled"). The watchdog must only rebuild devices that *were* healthy then went silent (e.g., AirPods hijacked by Proton Meet), not devices that never had signal. (`357e4dfcc`)
 
 
 #### Audio device recovery (monitor unplug / device switch)
