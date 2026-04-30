@@ -141,6 +141,7 @@ commits: `28e5c247`
 - [ ] **per-device audio toggle** — In the tray menu, verify you can toggle recording for individual audio devices. (`3ee3defcb`)
 - [ ] **stable audio device order** — Verify that audio devices listed in the tray menu maintain a stable order across refreshes. (`4577ac8a6`)
 - [ ] **Mic disconnect false-positives on sleep/wake** — Put the computer to sleep and wake it up. Verify that no false-positive mic disconnect notifications or logs are generated. (`796baa619`)
+- [ ] **Bluetooth device reuse mid-session (AirPods hijack)** — Start recording, join a video call, end call after 2+ minutes, immediately join second call within 1 minute on same app (Proton Meet, Google Meet, etc.). Verify both calls are fully captured in audio_transcriptions table. Verify no >30s silent gaps between calls. Root cause: detect CoreAudio zero-fill hijack when another app claims the device, auto-disconnect and reacquire stream. Verify logs show "zero-fill detected" within 30s of device hijack, then reconnect. Verify health endpoint stays green throughout. (`a2e89b2ae`)
 
 
 #### Audio device recovery (monitor unplug / device switch)
