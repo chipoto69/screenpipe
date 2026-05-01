@@ -359,6 +359,12 @@ impl DatabaseManager {
         // so we check pragma_table_info and add missing columns in Rust.
         Self::ensure_event_driven_columns(pool).await?;
 
+        // Fix: ensure device columns exist on audio_transcriptions table.
+        // Migration 20240917213422 may fail if the database already has these columns
+        // (e.g., from a previous partial apply, or a restored backup).
+        // This adds them idempotently if missing.
+        Self::ensure_audio_device_columns(pool).await?;
+
         Ok(())
     }
 
@@ -483,6 +489,52 @@ impl DatabaseManager {
             tracing::warn!(
                 "frames_fts is missing full_text column — consolidation migration may not have run"
             );
+        }
+
+        Ok(())
+    }
+
+    /// Ensure device-related columns exist on the audio_transcriptions table.
+    /// Migration 20240917213422 may fail if these columns already exist in the database
+    /// (e.g., from a previous partial apply, or a restored backup with stale schema).
+    /// This adds them idempotently if missing, following the same pattern as
+    /// ensure_event_driven_columns for frames table.
+    async fn ensure_audio_device_columns(pool: &SqlitePool) -> Result<(), sqlx::Error> {
+        let missing_columns: &[(&str, &str)] = &[
+            ("device", "TEXT NOT NULL DEFAULT ''"),
+            ("is_input_device", "BOOLEAN NOT NULL DEFAULT TRUE"),
+        ];
+
+        for (col_name, col_type) in missing_columns {
+            let row: (i64,) = sqlx::query_as(
+                "SELECT COUNT(*) FROM pragma_table_info('audio_transcriptions') WHERE name = ?1",
+            )
+            .bind(col_name)
+            .fetch_one(pool)
+            .await?;
+
+            if row.0 == 0 {
+                tracing::info!("Adding missing column audio_transcriptions.{}", col_name);
+                let sql = format!(
+                    "ALTER TABLE audio_transcriptions ADD COLUMN {} {}",
+                    col_name, col_type
+                );
+                sqlx::query(&sql).execute(pool).await?;
+            }
+        }
+
+        // Ensure the index on device column exists (from migration 20240917213422)
+        let index_exists: (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'idx_audio_transcriptions_device'",
+        )
+        .fetch_one(pool)
+        .await?;
+
+        if index_exists.0 == 0 {
+            tracing::info!("Creating index idx_audio_transcriptions_device");
+            sqlx::query("CREATE INDEX idx_audio_transcriptions_device ON audio_transcriptions(device)")
+                .execute(pool)
+                .await?;
         }
 
         Ok(())

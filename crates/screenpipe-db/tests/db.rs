@@ -2017,4 +2017,91 @@ mod tests {
             .unwrap();
         assert_eq!(count, 0, "Should count 0 for non-matching query");
     }
+
+    #[tokio::test]
+    async fn test_audio_transcription_device_columns_migration() {
+        // This test verifies that the migration 20240917213422 (add device info to audio_transcriptions)
+        // is idempotent and doesn't fail if columns already exist.
+        // The ensure_audio_device_columns() function in db.rs ensures columns are added
+        // if missing (fixing cases where the migration was partially applied or the DB was restored).
+
+        let db = setup_test_db().await;
+
+        // Verify that device and is_input_device columns exist on audio_transcriptions
+        let device_col_exists: (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM pragma_table_info('audio_transcriptions') WHERE name = 'device'",
+        )
+        .fetch_one(&db.pool)
+        .await
+        .unwrap();
+
+        assert_eq!(
+            device_col_exists.0, 1,
+            "device column should exist on audio_transcriptions"
+        );
+
+        let is_input_device_col_exists: (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM pragma_table_info('audio_transcriptions') WHERE name = 'is_input_device'",
+        )
+        .fetch_one(&db.pool)
+        .await
+        .unwrap();
+
+        assert_eq!(
+            is_input_device_col_exists.0, 1,
+            "is_input_device column should exist on audio_transcriptions"
+        );
+
+        // Verify the index exists
+        let index_exists: (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'idx_audio_transcriptions_device'",
+        )
+        .fetch_one(&db.pool)
+        .await
+        .unwrap();
+
+        assert_eq!(
+            index_exists.0, 1,
+            "idx_audio_transcriptions_device index should exist"
+        );
+
+        // Insert an audio transcription and verify device column can be populated
+        let audio_chunk_id = db.insert_audio_chunk("test_audio.wav", None).await.unwrap();
+        let timestamp = Utc::now();
+        let device = AudioDevice {
+            name: "Built-in Microphone".to_string(),
+            device_type: DeviceType::Input,
+        };
+
+        // Insert transcription with device info
+        let transcription_id = db
+            .insert_audio_transcription(
+                audio_chunk_id,
+                "Test transcription with device info",
+                0, // offset_index
+                "whisper", // transcription_engine
+                &device,
+                None, // speaker_id
+                Some(0.0), // start_time
+                Some(1.5), // end_time
+                Some(timestamp), // timestamp
+            )
+            .await
+            .unwrap();
+
+        // Verify the transcription was inserted successfully
+        assert!(transcription_id > 0);
+
+        // Query to verify device information was stored
+        let stored: (String, bool) = sqlx::query_as(
+            "SELECT device, is_input_device FROM audio_transcriptions WHERE id = ?1",
+        )
+        .bind(transcription_id)
+        .fetch_one(&db.pool)
+        .await
+        .unwrap();
+
+        assert_eq!(stored.0, "Built-in Microphone");
+        assert_eq!(stored.1, true);
+    }
 }
