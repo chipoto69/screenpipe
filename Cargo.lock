@@ -7156,6 +7156,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "screenpipe-redact"
+version = "0.3.307"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "chrono",
+ "futures",
+ "moka",
+ "ndarray",
+ "once_cell",
+ "ort",
+ "regex",
+ "reqwest",
+ "screenpipe-core",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "sqlx",
+ "tempfile",
+ "thiserror 1.0.69",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "screenpipe-screen"
 version = "0.3.307"
 dependencies = [
