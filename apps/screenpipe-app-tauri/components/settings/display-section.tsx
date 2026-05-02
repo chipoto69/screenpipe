@@ -235,7 +235,7 @@ export function DisplaySection() {
                   handleSettingsChange({ showShortcutOverlay: checked });
                   try {
                     if (checked) {
-                      await invoke("show_shortcut_reminder", { shortcut: settings.showScreenpipeShortcut });
+                      await invoke("show_shortcut_reminder", { shortcut: settings.showScreenpipeShortcut, shortcut_overlay_size: settings.shortcutOverlaySize });
                     } else {
                       await invoke("hide_shortcut_reminder");
                     }
@@ -273,7 +273,7 @@ export function DisplaySection() {
                             await invoke("hide_shortcut_reminder");
                             // Wait for store.bin to flush to disk before re-showing
                             await new Promise(r => setTimeout(r, 500));
-                            await invoke("show_shortcut_reminder", { shortcut: settings.showScreenpipeShortcut });
+                            await invoke("show_shortcut_reminder", { shortcut: settings.showScreenpipeShortcut, shortcut_overlay_size: option.value });
                           } catch {}
                         }}
                         type="button"

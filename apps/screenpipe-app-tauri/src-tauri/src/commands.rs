@@ -1407,6 +1407,7 @@ pub async fn open_search_window(
 pub async fn show_shortcut_reminder(
     app_handle: tauri::AppHandle,
     shortcut: String,
+    shortcut_overlay_size: String,
 ) -> Result<(), String> {
     use tauri::{Emitter, WebviewWindowBuilder};
 
@@ -1414,10 +1415,8 @@ pub async fn show_shortcut_reminder(
 
     info!("show_shortcut_reminder called");
 
-    let shortcut_overlay_size = crate::store::SettingsStore::get(&app_handle)
-        .unwrap_or_default()
-        .unwrap_or_default()
-        .shortcut_overlay_size;
+    // shortcut_overlay_size is passed as a parameter to avoid re-reading the store,
+    // which may fail if the encrypted store can't be decrypted due to keychain access issues
 
     // On macOS, try the native SwiftUI shortcut reminder first
     #[cfg(target_os = "macos")]

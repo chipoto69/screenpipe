@@ -514,9 +514,9 @@ async openSearchWindow(query: string | null) : Promise<Result<null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
-async showShortcutReminder(shortcut: string, shortcut_overlay_size: string = "small") : Promise<Result<null, string>> {
+async showShortcutReminder(shortcut: string) : Promise<Result<null, string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("show_shortcut_reminder", { shortcut, shortcut_overlay_size }) };
+    return { status: "ok", data: await TAURI_INVOKE("show_shortcut_reminder", { shortcut }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };

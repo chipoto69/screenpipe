@@ -1505,11 +1505,12 @@ async fn main() {
             // Don't show reminder during first-time onboarding to reduce overwhelm
             if store.show_shortcut_overlay && onboarding_store.is_completed {
                 let shortcut = store.show_screenpipe_shortcut.clone();
+                let shortcut_overlay_size = store.shortcut_overlay_size.clone();
                 let app_handle_reminder = app.handle().clone();
                 tauri::async_runtime::spawn(async move {
                     // Small delay to ensure windows are ready
                     tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-                    let _ = commands::show_shortcut_reminder(app_handle_reminder, shortcut).await;
+                    let _ = commands::show_shortcut_reminder(app_handle_reminder, shortcut, shortcut_overlay_size).await;
                 });
             }
 
