@@ -32,7 +32,7 @@ use windows::Win32::UI::Accessibility::{
     UIA_AutomationIdPropertyId, UIA_BoundingRectanglePropertyId, UIA_ClassNamePropertyId,
     UIA_ControlTypePropertyId, UIA_HasKeyboardFocusPropertyId, UIA_HelpTextPropertyId,
     UIA_IsEnabledPropertyId, UIA_IsKeyboardFocusablePropertyId, UIA_IsPasswordPropertyId,
-    UIA_LocalizedControlTypePropertyId, UIA_NamePropertyId, UIA_ValueValuePropertyId,
+    UIA_LocalizedControlTypePropertyId, UIA_NamePropertyId,
     UIA_PROPERTY_ID,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
@@ -77,7 +77,10 @@ impl UiaContext {
             cache_request.AddProperty(UIA_ClassNamePropertyId)?;
             cache_request.AddProperty(UIA_BoundingRectanglePropertyId)?;
             cache_request.AddProperty(UIA_IsEnabledPropertyId)?;
-            cache_request.AddProperty(UIA_ValueValuePropertyId)?;
+            // Note: UIA_ValueValuePropertyId removed to prevent Outlook autocomplete side effects.
+            // See #3121 — requesting Value on Outlook combobox listitems triggers MSAA bridge
+            // to call accSelect(SELFLAG_TAKEFOCUS | SELFLAG_TAKESELECTION), which auto-commits
+            // suggestions. Most accessible apps surface user text via UIA_NamePropertyId instead.
             cache_request.AddProperty(UIA_HasKeyboardFocusPropertyId)?;
             cache_request.AddProperty(UIA_IsKeyboardFocusablePropertyId)?;
             cache_request.AddProperty(UIA_HelpTextPropertyId)?;
@@ -106,7 +109,7 @@ impl UiaContext {
             walker_cache_request.AddProperty(UIA_ClassNamePropertyId)?;
             walker_cache_request.AddProperty(UIA_BoundingRectanglePropertyId)?;
             walker_cache_request.AddProperty(UIA_IsEnabledPropertyId)?;
-            walker_cache_request.AddProperty(UIA_ValueValuePropertyId)?;
+            // Note: UIA_ValueValuePropertyId removed to prevent Outlook autocomplete side effects (#3121)
             walker_cache_request.AddProperty(UIA_HasKeyboardFocusPropertyId)?;
             walker_cache_request.AddProperty(UIA_IsKeyboardFocusablePropertyId)?;
             walker_cache_request.AddProperty(UIA_HelpTextPropertyId)?;
@@ -205,7 +208,8 @@ impl UiaContext {
         let name = self.get_cached_string(element, UIA_NamePropertyId);
         let automation_id = self.get_cached_string(element, UIA_AutomationIdPropertyId);
         let class_name = self.get_cached_string(element, UIA_ClassNamePropertyId);
-        let value = self.get_cached_string(element, UIA_ValueValuePropertyId);
+        // Value property removed — see #3121 (Outlook autocomplete side effects)
+        let value: Option<String> = None;
         let bounds = self.get_cached_bounds(element);
         let is_enabled = self.get_cached_bool(element, UIA_IsEnabledPropertyId);
         let is_focused = self.get_cached_bool_opt(element, UIA_HasKeyboardFocusPropertyId);
@@ -279,7 +283,8 @@ impl UiaContext {
         let name = self.get_cached_string(element, UIA_NamePropertyId);
         let automation_id = self.get_cached_string(element, UIA_AutomationIdPropertyId);
         let class_name = self.get_cached_string(element, UIA_ClassNamePropertyId);
-        let value = self.get_cached_string(element, UIA_ValueValuePropertyId);
+        // Value property removed — see #3121 (Outlook autocomplete side effects)
+        let value: Option<String> = None;
         let bounds = self.get_cached_bounds(element);
         let is_enabled = self.get_cached_bool(element, UIA_IsEnabledPropertyId);
         let is_focused = self.get_cached_bool_opt(element, UIA_HasKeyboardFocusPropertyId);
@@ -451,7 +456,8 @@ impl UiaContext {
     fn element_to_context(&self, element: &IUIAutomationElement) -> ElementContext {
         let role = self.get_control_type_name(element);
         let name = self.get_cached_string(element, UIA_NamePropertyId);
-        let value = self.get_cached_string(element, UIA_ValueValuePropertyId);
+        // Value property removed — see #3121 (Outlook autocomplete side effects)
+        let value: Option<String> = None;
         let automation_id = self.get_cached_string(element, UIA_AutomationIdPropertyId);
         let bounds = self.get_cached_bounds(element);
 

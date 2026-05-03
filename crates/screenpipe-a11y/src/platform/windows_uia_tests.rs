@@ -1093,3 +1093,36 @@ fn test_serialization_fidelity() {
 
     unsafe { CoUninitialize() };
 }
+
+/// Regression test for #3121: Outlook autocomplete side effects.
+/// Verify that value property is never requested in cache requests to prevent
+/// MSAA bridge from calling accSelect() on Outlook combobox listitems.
+#[test]
+#[ignore]
+fn test_no_value_property_requested() {
+    com_init();
+    let app = TestApp::launch(&NOTEPAD, Duration::from_secs(10)).expect("Failed to launch Notepad");
+    app.focus();
+
+    let uia = UiaContext::new().expect("UIA init failed");
+    let snapshot = uia
+        .capture_window_tree(app.hwnd, 10000)
+        .expect("Failed to capture tree");
+
+    // Verify that all nodes have value set to None (not captured)
+    fn check_node(node: &AccessibilityNode) {
+        assert!(
+            node.value.is_none(),
+            "Value property should never be captured (issue #3121). Node: {:?}",
+            node.role
+        );
+        for child in &node.children {
+            check_node(child);
+        }
+    }
+
+    check_node(&snapshot);
+    println!("✓ Verified: value property is never captured (Outlook regression prevention)");
+
+    unsafe { CoUninitialize() };
+}
