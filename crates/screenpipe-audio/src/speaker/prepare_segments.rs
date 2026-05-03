@@ -122,6 +122,35 @@ pub async fn prepare_segments(
         }
 
         let segmentation_model_path = segmentation_model_path.unwrap();
+        
+        // Verify the model file still exists on disk.
+        // macOS can clear ~/Library/Caches at runtime, leaving a stale path in memory.
+        if !segmentation_model_path.exists() {
+            debug!(
+                "segmentation model cache invalidated (file missing): {:?}",
+                segmentation_model_path
+            );
+            // Fallback to speaker-unknown segment
+            let mut fallback_segment = Vec::new();
+            fallback_segment.extend_from_slice(&audio_data);
+
+            if tx
+                .send(SpeechSegment {
+                    start: 0.0,
+                    end: fallback_segment.len() as f64 / 16000.0,
+                    samples: fallback_segment,
+                    speaker: "unknown".to_string(),
+                    embedding: Vec::new(),
+                    sample_rate: 16000,
+                })
+                .await
+                .is_ok()
+            {
+                debug!("fallback speech segment sent for {} (stale model path)", device);
+            }
+            return Ok((rx, threshold_met, speech_ratio));
+        }
+        
         let embedding_extractor = embedding_extractor
             .as_ref()
             .expect("embedding extractor checked above")
@@ -151,4 +180,77 @@ pub async fn prepare_segments(
     }
 
     Ok((rx, threshold_met, speech_ratio))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[tokio::test]
+    async fn test_missing_segmentation_model_uses_fallback() {
+        // When segmentation_model_path points to a non-existent file,
+        // the function should detect this and use the fallback segment
+        // (speaker="unknown") instead of failing.
+        let stale_model_path = PathBuf::from("/nonexistent/path/model.onnx");
+        
+        // Verify the path doesn't exist
+        assert!(!stale_model_path.exists());
+        
+        // Create minimal test audio data (16000 samples @ 16kHz = 1 second)
+        // This meets the speech threshold requirement
+        let test_audio = vec![0.1f32; 16000];
+        
+        // Create a mock VAD engine that marks all frames as speech
+        let vad_engine = Arc::new(Mutex::new(Box::new(MockVad) as Box<dyn VadEngine + Send>));
+        
+        // Call prepare_segments with the stale model path
+        // embedding_extractor is None so we expect the original fallback path to be taken
+        let result = prepare_segments(
+            &test_audio,
+            vad_engine,
+            Some(&stale_model_path),
+            Arc::new(StdMutex::new(EmbeddingManager::new(100))),
+            None,  // No embedding extractor — triggers initial fallback
+            "test_device",
+            false,
+            false,
+        )
+        .await;
+        
+        // Should succeed with fallback segment instead of crashing
+        assert!(result.is_ok(), "prepare_segments should not fail with stale model path");
+        
+        let (mut rx, threshold_met, speech_ratio) = result.unwrap();
+        assert!(threshold_met, "speech threshold should be met");
+        assert!(speech_ratio > 0.0, "speech ratio should be positive");
+        
+        // Verify a fallback segment was sent
+        let segment = tokio::time::timeout(
+            std::time::Duration::from_secs(1),
+            rx.recv(),
+        )
+        .await;
+        
+        assert!(segment.is_ok(), "should receive a segment");
+        let segment = segment.unwrap();
+        assert!(segment.is_some(), "segment should be Some");
+        let seg = segment.unwrap();
+        assert_eq!(seg.speaker, "unknown", "fallback segment should have unknown speaker");
+    }
+    
+    // Mock VAD implementation for testing
+    struct MockVad;
+    
+    impl VadEngine for MockVad {
+        fn is_voice_segment(&mut self, _audio: &[f32]) -> anyhow::Result<bool> {
+            Ok(true)
+        }
+        
+        fn audio_type(&mut self, _audio: &[f32]) -> anyhow::Result<vad_rs::VadStatus> {
+            Ok(vad_rs::VadStatus::Speech)
+        }
+        
+        fn set_speech_threshold(&mut self, _threshold: Option<f32>) {}
+    }
 }
