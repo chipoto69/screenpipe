@@ -390,4 +390,55 @@ mod tests {
 
         debug!("Transcription completed in {:?}", elapsed_time);
     }
+
+    #[tokio::test]
+    async fn test_prepare_segments_handles_missing_model_gracefully() {
+        setup();
+
+        // Create test audio data (16 kHz, f32 samples)
+        let sample_rate = 16000;
+        let duration_secs = 1.0;
+        let samples = (sample_rate as f32 * duration_secs) as usize;
+        let mut audio_data = vec![0.1f32; samples]; // Small amplitude noise
+
+        // Add some speech-like variation
+        for i in 0..samples {
+            audio_data[i] += (i as f32 * 0.001).sin() * 0.05;
+        }
+
+        // Create VAD engine
+        let vad = SileroVad::new().await.unwrap();
+        let vad_engine = Arc::new(Mutex::new(
+            Box::new(vad) as Box<dyn VadEngine + Send>
+        ));
+
+        // Create embedding manager with max_speakers = 10
+        let embedding_manager = Arc::new(std::sync::Mutex::new(EmbeddingManager::new(10)));
+
+        // Test with None model path (should use fallback)
+        let result = prepare_segments(
+            &audio_data,
+            vad_engine.clone(),
+            None, // No segmentation model
+            embedding_manager.clone(),
+            None, // No embedding extractor
+            "test_device",
+            false,
+            false,
+        )
+        .await;
+
+        // Should succeed with fallback behavior
+        assert!(result.is_ok());
+        let (mut rx, _threshold_met, _speech_ratio) = result.unwrap();
+
+        // Should have received a fallback segment with "unknown" speaker
+        // since no segmentation model is available
+        if let Some(segment) = rx.recv().await {
+            // Fallback segment should have speaker = "unknown"
+            assert_eq!(segment.speaker, "unknown");
+            assert!(segment.samples.len() > 0);
+            assert_eq!(segment.sample_rate, sample_rate);
+        }
+    }
 }

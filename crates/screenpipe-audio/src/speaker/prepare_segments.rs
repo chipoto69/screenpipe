@@ -10,9 +10,14 @@ use crate::{
 };
 use anyhow::Result;
 use std::{path::PathBuf, sync::Arc, sync::Mutex as StdMutex};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::time::Instant;
 use tokio::sync::Mutex;
 use tracing::{debug, error};
 use vad_rs::VadStatus;
+
+static INVALIDATION_COUNT: AtomicUsize = AtomicUsize::new(0);
+static LAST_INVALIDATION: StdMutex<Option<Instant>> = StdMutex::new(None);
 
 use super::{
     embedding::EmbeddingExtractor, embedding_manager::EmbeddingManager, segment::SpeechSegment,
@@ -126,13 +131,45 @@ pub async fn prepare_segments(
             .as_ref()
             .expect("embedding extractor checked above")
             .clone();
-        let segments = get_segments(
+        let segments = match get_segments(
             &audio_data,
             16000,
             segmentation_model_path,
             embedding_extractor,
             embedding_manager,
-        )?;
+        ) {
+            Ok(segments) => segments,
+            Err(e) => {
+                // Downcast to ort::Error to verify it's a model loading/execution error.
+                if e.downcast_ref::<ort::Error>().is_some() {
+                    let now = Instant::now();
+                    {
+                        let mut last = LAST_INVALIDATION.lock().unwrap();
+                        if let Some(last_time) = *last {
+                            if now.duration_since(last_time).as_secs() > 300 {
+                                INVALIDATION_COUNT.store(0, Ordering::SeqCst);
+                            }
+                        }
+                        *last = Some(now);
+                    }
+                    let count = INVALIDATION_COUNT.fetch_add(1, Ordering::SeqCst);
+
+                    if count < 3 {
+                        error!("segmentation model corrupt, invalidating cache (attempt {}): {:?}", count + 1, e);
+                        if let Err(err) = crate::speaker::models::invalidate_cached_model(
+                            &crate::speaker::models::PyannoteModel::Segmentation,
+                        )
+                        .await
+                        {
+                            error!("failed to invalidate corrupt segmentation model: {:?}", err);
+                        }
+                    } else {
+                        error!("circuit breaker: too many model invalidations in short window, keeping failure: {:?}", e);
+                    }
+                }
+                return Err(e);
+            }
+        };
 
         for segment in segments {
             match segment {
