@@ -354,7 +354,38 @@ async fn deduplicate_speaker_by_name(
     newly_named_id: i64,
     name: &str,
 ) {
-    // Get voice-similar speakers first — this is the strong signal
+    // First, check for exact name collision (prevents duplicates even if voice-dissimilar)
+    // This catches cases where loopback output and mic input both get named "Alice"
+    if let Ok(Some(existing)) = db.find_speaker_by_name(name).await {
+        if existing.id != newly_named_id {
+            // Found an existing speaker with the same exact name.
+            // Count samples and merge the smaller into the larger.
+            let (our_res, their_res) = tokio::join!(
+                db.count_embeddings_for_speaker(newly_named_id),
+                db.count_embeddings_for_speaker(existing.id),
+            );
+            let our_count = our_res.unwrap_or(0);
+            let their_count = their_res.unwrap_or(0);
+
+            let (keep_id, merge_id) = if our_count > their_count {
+                (newly_named_id, existing.id)
+            } else {
+                (existing.id, newly_named_id)
+            };
+
+            info!(
+                "speaker dedup: merging {} into {} (exact name collision: '{}', samples {} vs {})",
+                merge_id, keep_id, name, our_count, their_count
+            );
+
+            if let Err(e) = db.merge_speakers(keep_id, merge_id).await {
+                warn!("speaker dedup: merge failed: {}", e);
+            }
+            return;
+        }
+    }
+
+    // Get voice-similar speakers — secondary deduplication signal
     let similar = match db.get_similar_speakers(newly_named_id, 10).await {
         Ok(v) => v,
         Err(e) => {
@@ -1230,5 +1261,49 @@ mod tests {
         // Cleanup: delete the temporary speakers
         let _ = db.delete_speaker(id_a).await;
         let _ = db.delete_speaker(id_b).await;
+    }
+
+    #[tokio::test]
+    async fn test_dedup_exact_name_collision_merges_dissimilar_voices() {
+        // Issue #3228: loopback output + mic input both get named "Alice" from calendar.
+        // They have different embeddings (acoustic artifacts), so voice-similarity check fails.
+        // But exact-name check must catch this and merge them.
+        let db = setup_db().await;
+
+        // Different embeddings (e.g., loopback vs mic)
+        let embedding_loopback: Vec<f32> = (0..512).map(|i| if i == 0 { 1.0 } else { 0.0 }).collect();
+        let embedding_mic: Vec<f32> = (0..512).map(|i| if i == 1 { 1.0 } else { 0.0 }).collect();
+
+        // Speaker A: loopback, already named "Alice"
+        let id_loopback = seed_speaker(&db, &embedding_loopback, Some("Alice")).await;
+
+        // Speaker B: mic input, unnamed
+        let id_mic = seed_speaker(&db, &embedding_mic, None).await;
+
+        // Both get named "Alice" from calendar
+        db.update_speaker_name(id_mic, "Alice")
+            .await
+            .unwrap();
+
+        // Run dedup on the mic speaker — should merge despite different voices
+        deduplicate_speaker_by_name(&db, id_mic, "Alice").await;
+
+        // After merge: both should be consolidated into one "Alice"
+        let alice_speakers: Vec<_> = db
+            .search_speakers("Alice")
+            .await
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|s| !s.name.is_empty())
+            .collect();
+        assert!(
+            alice_speakers.len() == 1,
+            "exact name collision should merge voice-dissimilar speakers into one 'Alice', got {} speakers",
+            alice_speakers.len()
+        );
+
+        // Cleanup
+        let _ = db.delete_speaker(id_loopback).await;
+        let _ = db.delete_speaker(id_mic).await;
     }
 }
