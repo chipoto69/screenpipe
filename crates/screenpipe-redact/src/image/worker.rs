@@ -89,11 +89,7 @@ pub struct ImageWorker {
 }
 
 impl ImageWorker {
-    pub fn new(
-        pool: SqlitePool,
-        redactor: Arc<dyn ImageRedactor>,
-        cfg: ImageWorkerConfig,
-    ) -> Self {
+    pub fn new(pool: SqlitePool, redactor: Arc<dyn ImageRedactor>, cfg: ImageWorkerConfig) -> Self {
         Self {
             pool,
             redactor,
@@ -318,8 +314,11 @@ mod tests {
         let w = ImageWorker::new(pool.clone(), Arc::new(StubRedactor), cfg);
         let outcome = w.process_one().await.unwrap();
         assert!(outcome.is_some());
-        let row = sqlx::query("SELECT image_redacted_at, image_redaction_version FROM frames LIMIT 1")
-            .fetch_one(&pool).await.unwrap();
+        let row =
+            sqlx::query("SELECT image_redacted_at, image_redaction_version FROM frames LIMIT 1")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
         let when: Option<i64> = row.get(0);
         let v: Option<i64> = row.get(1);
         assert!(when.is_some());

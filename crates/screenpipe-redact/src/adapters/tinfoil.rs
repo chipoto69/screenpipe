@@ -366,7 +366,10 @@ mod tests {
     fn strip_scheme_handles_url_and_host() {
         // Backwards compat: we used to take a full URL on the config.
         // Trim scheme + path so users mid-migration don't break.
-        assert_eq!(strip_scheme_and_path("https://host.example/foo"), "host.example");
+        assert_eq!(
+            strip_scheme_and_path("https://host.example/foo"),
+            "host.example"
+        );
         assert_eq!(strip_scheme_and_path("http://host.example"), "host.example");
         assert_eq!(strip_scheme_and_path("host.example"), "host.example");
         assert_eq!(strip_scheme_and_path("host.example/path"), "host.example");

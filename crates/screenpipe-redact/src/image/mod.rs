@@ -107,10 +107,18 @@ impl Default for ImageRedactionPolicy {
     fn default() -> Self {
         Self {
             allow: vec![
-                SpanLabel::Person, SpanLabel::Email, SpanLabel::Phone,
-                SpanLabel::Address, SpanLabel::Url, SpanLabel::Company,
-                SpanLabel::Repo, SpanLabel::Handle, SpanLabel::Channel,
-                SpanLabel::Id, SpanLabel::Date, SpanLabel::Secret,
+                SpanLabel::Person,
+                SpanLabel::Email,
+                SpanLabel::Phone,
+                SpanLabel::Address,
+                SpanLabel::Url,
+                SpanLabel::Company,
+                SpanLabel::Repo,
+                SpanLabel::Handle,
+                SpanLabel::Channel,
+                SpanLabel::Id,
+                SpanLabel::Date,
+                SpanLabel::Secret,
             ],
             min_score: 0.3,
         }

@@ -18,14 +18,12 @@ async-trait = "0.1"
 base64 = "0.22"
 chrono = { version = "0.4", features = ["serde"] }
 dirs = "5"
-futures = "0.3"
 image = "0.25"
 moka = { version = "0.12", features = ["future"] }
 once_cell = { workspace = true }
 regex = "1"
 reqwest = { workspace = true }
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
 sha2 = "0.10"
 sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "sqlite", "chrono"] }
 thiserror = "1"
@@ -37,9 +35,6 @@ thiserror = "1"
 tinfoil = { git = "https://github.com/tinfoilsh/tinfoil-rs" }
 tokio = { workspace = true }
 tracing = { workspace = true }
-
-# In-workspace
-screenpipe-core = { path = "../screenpipe-core" }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "test-util"] }

@@ -56,18 +56,18 @@ const NUM_QUERIES: usize = 300;
 /// `screenpipe-pii-bench-image/src/score.py::CANONICAL_LABELS`.
 #[cfg(feature = "onnx-cpu")]
 const CLASSES: [SpanLabel; NUM_CLASSES] = [
-    SpanLabel::Person,   // 0
-    SpanLabel::Email,    // 1
-    SpanLabel::Phone,    // 2
-    SpanLabel::Address,  // 3
-    SpanLabel::Url,      // 4
-    SpanLabel::Company,  // 5
-    SpanLabel::Repo,     // 6
-    SpanLabel::Handle,   // 7
-    SpanLabel::Channel,  // 8
-    SpanLabel::Id,       // 9
-    SpanLabel::Date,     // 10
-    SpanLabel::Secret,   // 11
+    SpanLabel::Person,  // 0
+    SpanLabel::Email,   // 1
+    SpanLabel::Phone,   // 2
+    SpanLabel::Address, // 3
+    SpanLabel::Url,     // 4
+    SpanLabel::Company, // 5
+    SpanLabel::Repo,    // 6
+    SpanLabel::Handle,  // 7
+    SpanLabel::Channel, // 8
+    SpanLabel::Id,      // 9
+    SpanLabel::Date,    // 10
+    SpanLabel::Secret,  // 11
 ];
 
 /// Configuration for [`RfdetrRedactor`].
@@ -305,8 +305,10 @@ mod imp {
                 .map_err(|_| RedactError::Runtime("rfdetr session mutex poisoned".into()))?;
             let input_name = session.inputs[0].name.clone();
             let outputs = session
-                .run(ort::inputs![input_name => TensorRef::from_array_view(input.view())
-                    .map_err(rt_err("ort tensor view"))?])
+                .run(
+                    ort::inputs![input_name => TensorRef::from_array_view(input.view())
+                    .map_err(rt_err("ort tensor view"))?],
+                )
                 .map_err(rt_err("ort run"))?;
 
             // Identify the two outputs by rank: (1, 300, 4) = boxes,

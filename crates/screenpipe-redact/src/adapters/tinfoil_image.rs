@@ -146,7 +146,11 @@ impl TinfoilImageRedactor {
             }
         };
 
-        let threshold = if cfg.threshold > 0.0 { cfg.threshold } else { 0.30 };
+        let threshold = if cfg.threshold > 0.0 {
+            cfg.threshold
+        } else {
+            0.30
+        };
 
         Self {
             enclave,
@@ -223,9 +227,9 @@ impl ImageRedactor for TinfoilImageRedactor {
     }
 
     async fn detect(&self, image_path: &Path) -> Result<Vec<ImageRegion>, RedactError> {
-        let bytes = tokio::fs::read(image_path).await.map_err(|e| {
-            RedactError::Runtime(format!("read {}: {e}", image_path.display()))
-        })?;
+        let bytes = tokio::fs::read(image_path)
+            .await
+            .map_err(|e| RedactError::Runtime(format!("read {}: {e}", image_path.display())))?;
         let image_b64 = B64.encode(&bytes);
 
         let http = self.http().await?;

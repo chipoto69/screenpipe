@@ -107,9 +107,13 @@ pub fn redact_frame(
 
 /// `frame_001.jpg` → `frame_001_redacted.jpg`.
 fn redacted_sibling(p: &Path) -> PathBuf {
-    let stem = p.file_stem().map(|s| s.to_string_lossy().into_owned())
+    let stem = p
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
         .unwrap_or_else(|| "frame".into());
-    let ext = p.extension().map(|s| s.to_string_lossy().into_owned())
+    let ext = p
+        .extension()
+        .map(|s| s.to_string_lossy().into_owned())
         .unwrap_or_else(|| "jpg".into());
     p.with_file_name(format!("{stem}_redacted.{ext}"))
 }
@@ -149,8 +153,16 @@ mod tests {
         let d = tempdir().unwrap();
         let p = make_test_jpg(d.path());
         let regions = [
-            ImageRegion { bbox: [10, 10, 30, 20], label: SpanLabel::Email,  score: 0.9 },
-            ImageRegion { bbox: [50, 30, 20, 20], label: SpanLabel::Person, score: 0.1 }, // below floor
+            ImageRegion {
+                bbox: [10, 10, 30, 20],
+                label: SpanLabel::Email,
+                score: 0.9,
+            },
+            ImageRegion {
+                bbox: [50, 30, 20, 20],
+                label: SpanLabel::Person,
+                score: 0.1,
+            }, // below floor
         ];
         let out = redact_frame(&p, &regions, &ImageRedactionPolicy::default(), false).unwrap();
         assert_eq!(out.regions_redacted, 1);
@@ -170,7 +182,11 @@ mod tests {
     fn destructive_overwrites_in_place() {
         let d = tempdir().unwrap();
         let p = make_test_jpg(d.path());
-        let r = ImageRegion { bbox: [0, 0, 100, 80], label: SpanLabel::Secret, score: 1.0 };
+        let r = ImageRegion {
+            bbox: [0, 0, 100, 80],
+            label: SpanLabel::Secret,
+            score: 1.0,
+        };
         let out = redact_frame(&p, &[r], &ImageRedactionPolicy::default(), true).unwrap();
         assert_eq!(out.output_path, p, "destructive must write to source path");
     }
@@ -179,7 +195,11 @@ mod tests {
     fn out_of_bounds_bbox_is_clamped() {
         let d = tempdir().unwrap();
         let p = make_test_jpg(d.path());
-        let r = ImageRegion { bbox: [80, 70, 999, 999], label: SpanLabel::Url, score: 1.0 };
+        let r = ImageRegion {
+            bbox: [80, 70, 999, 999],
+            label: SpanLabel::Url,
+            score: 1.0,
+        };
         let out = redact_frame(&p, &[r], &ImageRedactionPolicy::default(), false).unwrap();
         // 80..100 × 70..80 = 20 × 10 = 200 px
         assert_eq!(out.redacted_pixels, 200);
@@ -190,8 +210,16 @@ mod tests {
         let d = tempdir().unwrap();
         let p = make_test_jpg(d.path());
         let regions = [
-            ImageRegion { bbox: [10, 10, 5, 5], label: SpanLabel::Email,  score: 0.9 },
-            ImageRegion { bbox: [20, 20, 5, 5], label: SpanLabel::Secret, score: 0.9 },
+            ImageRegion {
+                bbox: [10, 10, 5, 5],
+                label: SpanLabel::Email,
+                score: 0.9,
+            },
+            ImageRegion {
+                bbox: [20, 20, 5, 5],
+                label: SpanLabel::Secret,
+                score: 0.9,
+            },
         ];
         let out = redact_frame(&p, &regions, &ImageRedactionPolicy::secrets_only(), false).unwrap();
         assert_eq!(out.regions_redacted, 1);
