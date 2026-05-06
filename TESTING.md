@@ -917,3 +917,6 @@ commits: `c6a73b17e`, `945b687ec`
 - [ ] **Persistent background chats** — Verify that chats continue to stream in the background even when navigating away from the chat view. (`0060ae9e5`, `ec5e80992`)
 - [ ] **Inline history in overlay** — Verify that inline history is restored in the overlay window. (`15b419ec7`)
 - [ ] **Notification URL actions** — Open a URL action from a native macOS notification when the overlay is not mounted. (`7fdcd2054`)
+- [ ] **Chat message expansion toggle** — In chat, expand a user message with the ChevronDown button. Verify it toggles expansion without triggering edit mode. (`f682e1f14`)
+- [ ] **Time filter dropdown duplicates** — In chat search, click "today" in the filter dropdown, then click "yesterday". Verify filters don't duplicate (no `@today @yesterday`, just `@yesterday`). (`405c950e2`)
+- [ ] **Consolidated text search in suggestions** — Perform a search that triggers accessibility suggestions. Verify the query uses `frames.full_text` not the dropped `accessibility` table. Caused "no such table: accessibility" errors pre-fix. (`cb56f40b9`)
