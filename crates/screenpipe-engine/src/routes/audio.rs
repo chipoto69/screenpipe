@@ -10,8 +10,9 @@ use axum::{
 };
 use oasgen::{oasgen, OaSchema};
 
-use screenpipe_audio::core::device::{
-    default_input_device, default_output_device, list_audio_devices,
+use screenpipe_audio::core::{
+    device::{default_input_device, default_output_device, list_audio_devices},
+    get_device_capture_time,
 };
 
 use serde::{Deserialize, Serialize};
@@ -150,14 +151,28 @@ pub(crate) async fn audio_device_status(
     let enabled = state.audio_manager.enabled_devices().await;
     let user_disabled = state.audio_manager.user_disabled_devices().await;
 
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+
     let entries: Vec<DeviceStatusEntry> = all_devices
         .into_iter()
         .map(|d| {
             let name = d.to_string();
             let in_enabled = enabled.contains(&name);
             let is_disabled = user_disabled.contains(&name);
+
+            // Device is only running if:
+            // 1. It's in the enabled set
+            // 2. It's not user-disabled
+            // 3. It has captured audio within the last 5 seconds
+            //    (prevents reporting as running when stream dies silently)
+            let last_capture = get_device_capture_time(&name);
+            let is_capturing = last_capture > 0 && now.saturating_sub(last_capture) < 5;
+
             DeviceStatusEntry {
-                is_running: in_enabled && !is_disabled,
+                is_running: in_enabled && !is_disabled && is_capturing,
                 is_user_disabled: is_disabled,
                 name,
             }
