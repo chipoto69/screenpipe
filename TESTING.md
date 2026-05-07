@@ -180,6 +180,12 @@ commits: calendar_speaker_id.rs, meetings.rs, meeting_persister.rs
 - [ ] **Browser meetings splitting fix** — Verify that meetings in the browser are correctly split into separate events. (`d8ba1dad3`)
 - [ ] **Meeting with hidden UI controls** — Start a Zoom/Teams meeting. Minimize the meeting window or switch apps (Zoom controls move out of accessibility tree). Verify meeting stays active and does NOT auto-terminate after 30 seconds. Audio output detection prevents false "meeting ended" events. (`4e784f620`)
 - [ ] **OpenAI-compatible transcription endpoint** — Verify that the `/v1/audio/transcriptions` endpoint works as expected, following the OpenAI specification. (`5a14e9a92`)
+- [ ] **Meeting notes editor (TipTap markdown)** — During a recording, open the meeting notes panel. Verify that the TipTap editor appears with markdown support (bold `**text**`, italic `*text*`, lists). Type notes, save, restart app. Notes persist. (`74853994d`)
+- [ ] **Markdown editing toolbar** — In meeting notes editor, verify that the toolbar provides markdown formatting buttons (bold, italic, list, code block). Verify keyboard shortcuts (Ctrl/Cmd+B for bold, etc.) work. (`74853994d`)
+- [ ] **Meeting notes export** — In the meeting notes editor, verify export to markdown (`.md`) file containing meeting date, attendees, transcript, and notes. (`74853994d`)
+- [ ] **Connected integrations in Pi system prompt** — Add a Slack or Discord connection. Ask Pi a question in chat. Verify in logs that the system prompt includes the connection names (e.g., "You have access to: Slack"). (`287427705`)
+- [ ] **Integration context retrieval** — With a connection active, ask Pi to "find recent messages from Slack" or similar. Verify the connection's context is passed to the AI and results are returned. (`287427705`)
+- [ ] **Chat sidebar sorting with integrations** — With active pipes and manual chats, verify that user-touched manual chats are sorted above auto-generated pipe completion chats in the sidebar. (`287427705`)
 
 ### 5. frame comparison & OCR pipeline
 
@@ -459,6 +465,11 @@ commits: `2f6b2af5`, `ea7f1f61`, `5cb100ea`
 - [ ] **Per-device record counts in sync** — In sync settings, verify that record counts are displayed for each synchronized device and that sync configuration persists across restarts. (`0e7baaedb`)
 - [ ] **transcription daily cost cap** — Verify that the daily cost cap for transcription is correctly enforced and prevents further transcription once reached. (`2f67a1041`)
 - [ ] **local Google Calendar OAuth** — Connect Google Calendar. Verify it uses the local OAuth flow instead of a cloud-based one. (`0177fdf2b`)
+- [ ] **Cross-device memories sync (Pro)** — As a Pro user, enable "Sync Memories" toggle in account settings. Create a memory, verify it syncs to another paired device and both show the same content. (`63c709110`)
+- [ ] **Memories sync background loop** — With memories sync enabled, verify background sync runs and merges memories using Last-Write-Wins (LWW) strategy. Check logs for reconciliation entries. (`63c709110`)
+- [ ] **Device provenance in memories** — Create a memory on one device, sync to another. Verify `source_context._device` is populated with the originating device's machine_id. (`63c709110`)
+- [ ] **Memory tombstone log** — Delete a synced memory. Verify a tombstone entry is written to `~/.screenpipe/.memory_sync_tombstones.json` before deletion. (`63c709110`)
+- [ ] **Memories sync NOT syncing frame_id** — Check sync data: frame_id should never appear in synced memories (it's a local FK). Verify stripped on push, NULL on import. (`63c709110`)
 
 ### 14. Region OCR (Shift+Drag)
 
@@ -754,7 +765,12 @@ commits: `274a968af`, `dc575e48e`, `81aabbf18`, `d5e071854`, `db08f8c06`, `f4225
 ### 21. Privacy & Incognito Detection
 
 - [ ] **PII Filter** — Toggle the PII filter in chat or search. Verify that sensitive information is filtered using Tinfoil. (`fec0f1023`)
-
+- [ ] **Privacy filter enclave attestation** — With filter_pii enabled, verify that the privacy filter uses tinfoil-rs SDK for hardware attestation (AMD SEV-SNP) and Sigstore code-provenance verification. Check that TLS cert pinning works without MITM. (`647ac4fac`)
+- [ ] **Privacy filter fail-closed behavior** — If attestation fails, verify that the /search caller receives an error and unredacted text never slips through. (`647ac4fac`)
+- [ ] **Async PII redaction worker** — Enable the PII redaction setting. Verify that redaction runs as a background worker (not on the capture hot path) with a configurable poll interval. Check logs for "redaction reconciliation" entries. (`0bdd22a13`)
+- [ ] **PII redaction text surfaces** — Verify that redaction covers OCR text, audio transcripts, accessibility-tree text, and clipboard data. (`0bdd22a13`)
+- [ ] **PII redaction cache efficiency** — With PII redaction enabled, verify that the SHA-256 cache achieves 70-90% hit rate on typical workday data (no redundant redaction of repeated UI chrome). Check logs or metrics. (`0bdd22a13`)
+- [ ] **Regex-only PII redaction** — With AI-based redaction unavailable, verify that regex adapter (emails, phones, JWTs, API keys, card numbers) still redacts text reliably. (`0bdd22a13`)
 
 commits: `ad431b513`, `d9722bccc`, `4df21e83d`
 
