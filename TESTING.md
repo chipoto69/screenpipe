@@ -137,6 +137,7 @@ commits: `28e5c247`
 - [ ] **Music detection thresholds** — With "filter music" enabled, play various types of music. Verify that music is correctly detected and filtered, and that non-music speech is still captured.
 - [ ] **Audio reconciliation FK constraint loop** — Verify that audio reconciliation does not enter an infinite retry loop on foreign key constraints. (`e9e2dc252`)
 - [ ] **Skip reconciliation when transcription disabled** — Disable audio transcription in settings. Verify that audio reconciliation is skipped. (`ceb77559d`)
+- [ ] **Orphan undecodable audio chunks** — Record audio with a corrupt/partial audio file (simulate via debug write or filesystem error). Verify reconciliation does NOT retry the same chunk forever. Check logs that chunk is orphaned after first decode failure (not re-selected every 2 minutes). Prevents high CPU/battery consumption on reconciliation loops. (`32e5dfc44`)
 - [ ] **dead System Audio auto-reconnect** — Simulate a dead system audio stream. Verify it auto-reconnects and resumes capture. (`0f287761d`)
 - [ ] **per-device audio toggle** — In the tray menu, verify you can toggle recording for individual audio devices. (`3ee3defcb`)
 - [ ] **stable audio device order** — Verify that audio devices listed in the tray menu maintain a stable order across refreshes. (`4577ac8a6`)
