@@ -909,6 +909,7 @@ commits: `c6a73b17e`, `945b687ec`
 
 - [ ] **CLI logout** — Run `screenpipe logout`. Verify it clears local auth tokens. (`793c3d6e9`)
 - [ ] **CLI sync remote** — Verify `screenpipe sync remote` command and its configuration. (`f46e85cb1`)
+- [ ] **Accessibility table migration regression** — Verify that suggestions.rs queries work after accessibility table consolidation into frames.full_text. Run a search query using context snippets; should not error with "no such table: accessibility". (`cb56f40b9`)
 
 ### 31. Chat (Pi)
 
