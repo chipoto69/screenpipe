@@ -46,7 +46,9 @@
   },
   "plugins": {
     "updater": {
-      "endpoints": [],
+      "endpoints": [
+        "https://screenpi.pe/api/app-update/stable"
+      ],
       "pubkey": ""
     },
     "deep-link": {
